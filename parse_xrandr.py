@@ -1,4 +1,4 @@
-import re
+from re import compile, VERBOSE, MULTILINE, escape
 from enum import IntEnum, IntFlag, Enum, unique, auto
 from shutil import which
 from subprocess import Popen, PIPE
@@ -90,7 +90,6 @@ class XRandROutput:
 	class Connection(IntEnum):
 		Connected = 0
 		Disconnected = 1
-		#UnknownConnection = 2
 	class Rotation(IntEnum):
 		Rotate_0 = 1
 		Rotate_90 = 2
@@ -339,7 +338,7 @@ flag_to_text = reverse_mapping(text_to_flag)
 
 # Parsing regexes and functions
 
-screen_regex = re.compile(r'Screen\s*(?P<screen_number>\d+):\s*')
+screen_regex = compile(r'Screen\s*(?P<screen_number>\d+):\s*')
 def screen_func(s, pos, screens, match):
 	screen = XRandRScreen(int(match.group('screen_number')))
 	
@@ -360,13 +359,13 @@ def screen_func(s, pos, screens, match):
 	screens[screen.number] = screen
 	return s, pos
 
-screen_dimensions_regex = re.compile(
+screen_dimensions_regex = compile(
 	r'''
 	(?P<type>minimum|current|maximum)
 	\s+(?P<width>\d+)\s*x\s*(?P<height>\d+)
 	\s*(?:,\s*)?
 	''',
-	re.VERBOSE
+	VERBOSE | MULTILINE
 )
 def screen_dimensions_func(s, pos, dimensions_list, match):
 	dim = XRandRDimensions(
@@ -384,7 +383,7 @@ def screen_dimensions_func(s, pos, dimensions_list, match):
 	
 	return s, match.end()
 
-output_regex = re.compile(
+output_regex = compile(
 	r'''
 	(?P<name>\S+)
 	\s+(?P<connection>connected|disconnected|unknown connection)
@@ -401,7 +400,7 @@ output_regex = re.compile(
 		)?
 	)?\s*
 	''',
-	re.VERBOSE
+	VERBOSE | MULTILINE
 )
 def output_func(s, pos, outputs, match):
 	output = XRandROutput(match.group('name'))
@@ -485,7 +484,7 @@ def output_func(s, pos, outputs, match):
 	outputs[output.name] = output
 	return s, pos
 
-output_supported_rotation_regex = re.compile(r'(?P<supported_rotation>normal|left|inverted|right)\s*(?:\s|(?P<end>\)\s*))')
+output_supported_rotation_regex = compile(r'(?P<supported_rotation>normal|left|inverted|right)\s*(?:\s|(?P<end>\)\s*))')
 def output_supported_rotation_func(s, pos, supported_rotations, match):
 	supported_rotations.append(
 		text_to_rotation[match.group('supported_rotation')]
@@ -494,7 +493,7 @@ def output_supported_rotation_func(s, pos, supported_rotations, match):
 		return s, match.end(), supported_rotations, ParserAction.Stop
 	return s, match.end()
 
-output_supported_reflection_regex = re.compile(r'(?P<supported_reflection>x axis|y axis)\s*(?:\s|(?P<end>\)\s*))')
+output_supported_reflection_regex = compile(r'(?P<supported_reflection>x axis|y axis)\s*(?:\s|(?P<end>\)\s*))')
 def output_supported_reflection_func(s, pos, supported_reflections, match):
 	supported_reflections.append(
 		text_to_supported_reflection[match.group('supported_reflection')]
@@ -503,7 +502,7 @@ def output_supported_reflection_func(s, pos, supported_reflections, match):
 		return s, match.end(), supported_reflections, ParserAction.Stop
 	return s, match.end()
 
-output_regex2 = re.compile(
+output_regex2 = compile(
 	r'''
 	(?P<width_mm>\d+)mm\s*x\s*(?P<height_mm>\d+)mm
 	(?P<panning>
@@ -522,7 +521,7 @@ output_regex2 = re.compile(
 		/(?P<border_right>\d+)/(?P<border_bottom>\d+)
 	)?\s*
 	''',
-	re.VERBOSE
+	VERBOSE | MULTILINE
 )
 def output_func2(s, pos, output, match):
 	output.dimensions_mm = XRandRDimensions(
@@ -560,17 +559,17 @@ def output_func2(s, pos, output, match):
 		)
 	return s, match.end(), output, ParserAction.Stop
 
-output_property_identifier_regex = re.compile(r'(?<=^\t)Identifier:\s*(?P<identifier>0x[0-9A-Fa-f]+)\s*', re.MULTILINE)
+output_property_identifier_regex = compile(r'(?<=^\t)Identifier:\s*(?P<identifier>0x[0-9A-Fa-f]+)\s*', MULTILINE)
 def output_property_identifier_func(s, pos, output_properties, match):
 	output_properties.identifier = int(match.group('identifier'), 16)
 	return s, match.end(), output_properties, ParserAction.Continue
 
-output_property_timestamp_regex = re.compile(r'(?<=^\t)Timestamp:\s*(?P<timestamp>\d+)\s*', re.MULTILINE)
+output_property_timestamp_regex = compile(r'(?<=^\t)Timestamp:\s*(?P<timestamp>\d+)\s*', MULTILINE)
 def output_property_timestamp_func(s, pos, output_properties, match):
 	output_properties.timestamp = int(match.group('timestamp'))
 	return s, match.end(), output_properties, ParserAction.Continue
 
-output_property_subpixel_order_regex = re.compile(
+output_property_subpixel_order_regex = compile(
 	r'''
 	(?<=^\t)Subpixel:\s*
 	(?P<subpixel_order>
@@ -579,13 +578,13 @@ output_property_subpixel_order_regex = re.compile(
 		|no\ subpixels
 	)\s*
 	''',
-	re.VERBOSE | re.MULTILINE
+	VERBOSE | MULTILINE
 )
 def output_property_subpixel_order_func(s, pos, output_properties, match):
 	output_properties.subpixel_order = text_to_subpixel_order[match.group('subpixel_order')]
 	return s, match.end(), output_properties, ParserAction.Continue
 
-output_property_gamma_regex = re.compile(
+output_property_gamma_regex = compile(
 	r'''
 	(?<=^\t)Gamma:\s*
 	(?P<gamma_red>\d+(?:\.\d+)(?:e+\d+))
@@ -593,7 +592,7 @@ output_property_gamma_regex = re.compile(
 	:(?P<gamma_blue>\d+(?:\.\d+)(?:e+\d+))
 	\s*
 	''',
-	re.VERBOSE | re.MULTILINE
+	VERBOSE | MULTILINE
 )
 def output_property_gamma_func(s, pos, output_properties, match):
 	output_properties.gamma = XRandROutputProperties.Gamma(
@@ -603,41 +602,41 @@ def output_property_gamma_func(s, pos, output_properties, match):
 	)
 	return s, match.end(), output_properties, ParserAction.Continue
 
-output_property_brightness_regex = re.compile(
+output_property_brightness_regex = compile(
 	r'''
 	(?<=^\t)Brightness:\s*
 	(?P<brightness>\d+(?:\.\d+)(?:e+\d+))
 	\s*
 	''',
-	re.VERBOSE | re.MULTILINE
+	VERBOSE | MULTILINE
 )
 def output_property_brightness_func(s, pos, output_properties, match):
 	output_properties.brightness = float(match.group('brightness'))
 	return s, match.end(), output_properties, ParserAction.Continue
 
-output_property_clones_regex = re.compile(r'(?<=^\t)Clones:[^\S\n]*(?P<clones>(?:\S+[^\S\n]*)*)\s*', re.MULTILINE)
+output_property_clones_regex = compile(r'(?<=^\t)Clones:[^\S\n]*(?P<clones>(?:\S+[^\S\n]*)*)\s*', MULTILINE)
 def output_property_clones_func(s, pos, output_properties, match):
 	output_properties.clones = match.group('clones').split()
 	return s, match.end(), output_properties, ParserAction.Continue
 
-output_property_crtc_regex = re.compile(r'(?<=^\t)CRTC:\s*(?P<crtc>\d+)\s*', re.MULTILINE)
+output_property_crtc_regex = compile(r'(?<=^\t)CRTC:\s*(?P<crtc>\d+)\s*', MULTILINE)
 def output_property_crtc_func(s, pos, output_properties, match):
 	output_properties.crtc = int(match.group('crtc'))
 	return s, match.end(), output_properties, ParserAction.Continue
 
-output_property_crtcs_regex = re.compile(r'(?<=^\t)CRTCs:\s*(?P<crtcs>(?:\d+(?:$|\s+))+)\s*', re.MULTILINE)
+output_property_crtcs_regex = compile(r'(?<=^\t)CRTCs:\s*(?P<crtcs>(?:\d+(?:$|\s+))+)\s*', MULTILINE)
 def output_property_crtcs_func(s, pos, output_properties, match):
 	output_properties.crtcs = tuple(int(crtc) for crtc in match.group('crtcs').split())
 	return s, match.end(), output_properties, ParserAction.Continue
 
-output_property_panning_regex = re.compile(
+output_property_panning_regex = compile(
 	r'''
 	(?<=^\t)Panning:\s*
 	(?P<pan_width>\d+)x(?P<pan_height>\d+)
 	\+(?P<pan_left>\d+)\+(?P<pan_top>\d+)
 	\s*
 	''',
-	re.VERBOSE | re.MULTILINE
+	VERBOSE | MULTILINE
 )
 def output_property_panning_func(s, pos, output_properties, match):
 	output_properties.panning = XRandRGeometry(
@@ -652,14 +651,14 @@ def output_property_panning_func(s, pos, output_properties, match):
 	)
 	return s, match.end(), output_properties, ParserAction.Continue
 
-output_property_tracking_regex = re.compile(
+output_property_tracking_regex = compile(
 	r'''
 	(?<=^\t)Tracking:\s*
 	(?P<track_width>\d+)x(?P<track_height>\d+)
 	\+(?P<track_left>\d+)\+(?P<track_top>\d+)
 	\s*
 	''',
-	re.VERBOSE | re.MULTILINE
+	VERBOSE | MULTILINE
 )
 def output_property_tracking_func(s, pos, output_properties, match):
 	output_properties.tracking = XRandRGeometry(
@@ -674,14 +673,14 @@ def output_property_tracking_func(s, pos, output_properties, match):
 	)
 	return s, match.end(), output_properties, ParserAction.Continue
 
-output_property_border_regex = re.compile(
+output_property_border_regex = compile(
 	r'''
 	(?<=^\t)Border:\s*
 	(?P<border_left>\d+)/(?P<border_top>\d+)
 	/(?P<border_right>\d+)/(?P<border_bottom>\d+)
 	\s*
 	''',
-	re.VERBOSE | re.MULTILINE
+	VERBOSE | MULTILINE
 )
 def output_property_border_func(s, pos, output_properties, match):
 	output_properties.border = XRandRBorder(
@@ -692,7 +691,7 @@ def output_property_border_func(s, pos, output_properties, match):
 	)
 	return s, match.end(), output_properties, ParserAction.Continue
 
-output_property_transform_regex = re.compile(
+output_property_transform_regex = compile(
 	r'''
 	(?<=^\t)Transform:\s*
 	(?P<matrix>
@@ -705,7 +704,7 @@ output_property_transform_regex = re.compile(
 		\s*
 	)?
 	''',
-	re.VERBOSE | re.MULTILINE
+	VERBOSE | MULTILINE
 )
 def output_property_transform_func(s, pos, output_properties, match):
 	output_properties.transform = XRandRTransform(
@@ -714,7 +713,7 @@ def output_property_transform_func(s, pos, output_properties, match):
 	)
 	return s, match.end(), output_properties, ParserAction.Continue
 
-output_property_edid_regex = re.compile(
+output_property_edid_regex = compile(
 	r'''
 	(?<=^\t)EDID:\s*
 	(?P<edid>
@@ -722,13 +721,13 @@ output_property_edid_regex = re.compile(
 		(?:[0-9A-Fa-f][0-9A-Fa-f])*
 	)\s*
 	''',
-	re.VERBOSE | re.MULTILINE
+	VERBOSE | MULTILINE
 )
 def output_property_edid_func(s, pos, output_properties, match):
 	output_properties.edid = bytes.fromhex(match.group('edid'))
 	return s, match.end(), output_properties, ParserAction.Continue
 
-output_property_guid_regex = re.compile(
+output_property_guid_regex = compile(
 	r'''
 	(?<=^\t)GUID:\s*
 	(?P<guid>
@@ -745,18 +744,18 @@ output_property_guid_regex = re.compile(
 		\}
 	)\s*
 	''',
-	re.VERBOSE | re.MULTILINE
+	VERBOSE | MULTILINE
 )
 def output_property_guid_func(s, pos, output_properties, match):
 	output_properties.edid = bytes.fromhex(match.group('guid')[1:-1].replace('-', ''))
 	return s, match.end(), output_properties, ParserAction.Continue
 
-output_property_other_regex = re.compile(
+output_property_other_regex = compile(
 	r'''
 	(?<=^\t)(?P<name>[^:]+):[^\S\n]*(?P<value>.*)\s*
 	(?:(?P<range>range:)|(?P<supported>supported:))?
 	''',
-	re.VERBOSE | re.MULTILINE
+	VERBOSE | MULTILINE
 )
 def output_property_other_func(s, pos, output_properties, match):
 	if output_properties.other is None:
@@ -782,14 +781,14 @@ def output_property_other_func(s, pos, output_properties, match):
 	output_properties.other[output_property.name] = output_property
 	return s, pos, output_properties, ParserAction.Continue
 
-output_property_other_range_regex = re.compile(r' \((?P<start_val>[^,]+), (?P<end_val>[^)]+)\)(?:,|(?P<end>$\s*))', re.MULTILINE)
+output_property_other_range_regex = compile(r' \((?P<start_val>[^,]+), (?P<end_val>[^)]+)\)(?:,|(?P<end>$\s*))', MULTILINE)
 def output_property_other_range_func(s, pos, output_property, match):
 	if output_property.range is None:
 		output_property.range = []
 	output_property.range.append((match.group('start_val'), match.group('end_val')))
 	return s, match.end(), output_property, ParserAction.Stop if match.group('end') else ParserAction.Continue
 
-output_property_other_supported_regex = re.compile(r' (?P<value>[^\n,]+)(?:,|(?P<end>$\s*))', re.MULTILINE)
+output_property_other_supported_regex = compile(r' (?P<value>[^\n,]+)(?:,|(?P<end>$\s*))', MULTILINE)
 def output_property_other_supported_func(s, pos, output_property, match):
 	if output_property.supported is None:
 		output_property.supported = []
@@ -814,20 +813,20 @@ output_property_parser_list = (
 	(output_property_other_regex, output_property_other_func)
 )
 
-output_mode_nonverbose_regex = re.compile(
+output_mode_nonverbose_regex = compile(
 	r'''
 	(?<=^\ {3})(?P<name>(?P<width>\d+)x(?P<height>\d+))[^\S\n]+
 	''',
-	re.VERBOSE | re.MULTILINE
+	VERBOSE | MULTILINE
 )
-output_mode_nonverbose_clock_regex = re.compile(
+output_mode_nonverbose_clock_regex = compile(
 	r'''
 	(?P<clock>\d*\.\d*)
 	(?P<current>\*|\ )
 	(?P<preferred>\+|\ )
 	\s*
 	''',
-	re.VERBOSE | re.MULTILINE
+	VERBOSE | MULTILINE
 )
 def output_mode_nonverbose_func(s, pos, modes, match):
 	name = match.group('name')
@@ -853,12 +852,12 @@ def output_mode_nonverbose_func(s, pos, modes, match):
 	
 	return s, pos
 
-output_mode_verbose_regex = re.compile(
+output_mode_verbose_regex = compile(
 	r'''
 	(?<=^\ {2})(?P<name>\S+)\s+
 	\((?P<id>0x[0-9A-Fa-f]+)\)\s+
 	(?P<dotclock>\d*\.\d*)MHz
-	(?P<flags>(?:\s+''' + r')?(?:\s+'.join(re.escape(flag) for flag in text_to_flag.keys()) + r''')?)
+	(?P<flags>(?:\s+''' + r')?(?:\s+'.join(escape(flag) for flag in text_to_flag.keys()) + r''')?)
 	(?P<current>\s+\*current)?
 	(?P<preferred>\s+\+preferred)?
 	[^\S\n]*
@@ -880,7 +879,7 @@ output_mode_verbose_regex = re.compile(
 	clock\s+(?P<refresh>\d*\.\d*)Hz
 	\s*
 	''',
-	re.VERBOSE | re.MULTILINE
+	VERBOSE | MULTILINE
 )
 def output_mode_verbose_func(s, pos, modes, match):
 	mode = XRandROutput.Mode(
@@ -965,27 +964,8 @@ def parse_xrandr_screens(xrandr_output, start=0):
 		{},
 		((screen_regex, screen_func),)
 	)
-	return screens
-
-# DEBUG:
-def parse_xrandr_debug(s=None):
-	global xrandr_output, start, screens, matches
-	if s is not None:
-		xrandr_output = s
-	else:
-		xrandr_path = which('xrandr')
-		if not xrandr_path:
-			raise FileNotFoundError('xrandr not found')
-		
-		with Popen(('xrandr', '--verbose'), executable=xrandr_path, stdout=PIPE, universal_newlines=True) as popen:
-			xrandr_output = popen.stdout.read()
-	
-	xrandr_output, start, screens, matches = parse(
-		xrandr_output,
-		0,
-		{},
-		((screen_regex, screen_func),)
-	)
+	success = start == len(xrandr_output)
+	return screens, success
 
 def parse_xrandr():
 	xrandr_path = which('xrandr')
