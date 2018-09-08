@@ -3,6 +3,20 @@ from enum import IntEnum, IntFlag, Enum, unique, auto
 from shutil import which
 from subprocess import Popen, PIPE
 
+__all__ = (
+	'XRandRDimensions',
+	'XRandROffset',
+	'XRandRGeometry',
+	'XRandRBorder',
+	'XRandRTransform',
+	'XRandRScreen',
+	'XRandRScreenDimensionsList',
+	'XRandROutput',
+	'XRandROutputProperties',
+	'parse_xrandr_screens',
+	'parse_xrandr'
+)
+
 # Classes
 
 class XRandRDimensions:
