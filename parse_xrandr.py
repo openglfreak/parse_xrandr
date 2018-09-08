@@ -775,6 +775,8 @@ def output_property_other_func(s, pos, output_properties, match):
 	if output_properties.other is None:
 		output_properties.other = {}
 	output_property = XRandROutputProperties.OtherProperty(match.group('name'), match.group('value'))
+	if output_property.value[-1] == ' ':
+		output_property.value = output_property.value[:-1]
 	
 	regex = None
 	if match.group('range'):
