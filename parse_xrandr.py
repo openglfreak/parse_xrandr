@@ -933,42 +933,56 @@ class ParserAction(Enum):
 	Restart = auto()
 	Continue = auto()
 	Stop = auto()
+	Again = auto()
 
-def parse(s, pos, obj, regexes):
+def parse(s, pos, obj, regexes, default_action=ParserAction.Restart):
+	matched = False
 	matches = 0
+	
+	action = ParserAction.Restart
 	while True:
-		matched = False
-		for regex, func in regexes:
-			match = regex.match(s, pos=pos)
-			if not match:
-				continue
-			matched = True
-			matches += 1
-			
-			ret = func(s, pos, obj, match)
-			if ret is None:
-				break
-			
-			if len(ret) < 1:
-				break
-			s = ret[0]
-			if len(ret) < 2:
-				break
-			pos = ret[1]
-			if len(ret) < 3:
-				break
-			obj = ret[2]
-			if len(ret) < 4:
-				break
-			action = ret[3]
-			
-			if not action or action == ParserAction.Restart:
-				break
-			elif action == ParserAction.Stop:
-				return s, pos, obj, matches
-			assert action == ParserAction.Continue
-		if not matched:
+		if action == ParserAction.Stop:
 			break
+		if action == ParserAction.Restart:
+			regex_iter = iter(regexes)
+			action = ParserAction.Continue
+		if action == ParserAction.Continue:
+			try:
+				regex, func = next(regex_iter)
+			except StopIteration:
+				if not matched:
+					break
+				matched = False
+				action = ParserAction.Restart
+				continue
+		else:
+			assert action == ParserAction.Again
+		
+		match = regex.match(s, pos=pos)
+		if not match:
+			continue
+		matched = True
+		matches += 1
+		
+		action = default_action
+		
+		ret = func(s, pos, obj, match)
+		if ret is None:
+			continue
+		
+		if len(ret) < 1:
+			continue
+		s = ret[0]
+		if len(ret) < 2:
+			continue
+		pos = ret[1]
+		if len(ret) < 3:
+			continue
+		obj = ret[2]
+		if len(ret) < 4:
+			continue
+		action = ret[3]
+	
 	return s, pos, obj, matches
 
 # Parsing helpers
