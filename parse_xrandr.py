@@ -371,7 +371,7 @@ def screen_func(s, pos, screens, match):
 	)
 	
 	screens[screen.number] = screen
-	return s, pos
+	return s, pos, screens, ParserAction.Again
 
 screen_dimensions_regex = compile(
 	r'''
@@ -395,7 +395,7 @@ def screen_dimensions_func(s, pos, dimensions_list, match):
 		assert type == 'maximum'
 		dimensions_list.maximum = dim
 	
-	return s, match.end()
+	return s, match.end(), dimensions_list, ParserAction.Again
 
 output_regex = compile(
 	r'''
@@ -496,25 +496,27 @@ def output_func(s, pos, outputs, match):
 	)
 	
 	outputs[output.name] = output
-	return s, pos
+	return s, pos, outputs, ParserAction.Again
 
 output_supported_rotation_regex = compile(r'(?P<supported_rotation>normal|left|inverted|right)\s*(?:\s|(?P<end>\)\s*))')
 def output_supported_rotation_func(s, pos, supported_rotations, match):
 	supported_rotations.append(
 		text_to_rotation[match.group('supported_rotation')]
 	)
+	_action = ParserAction.Again
 	if match.group('end'):
-		return s, match.end(), supported_rotations, ParserAction.Stop
-	return s, match.end()
+		_action = ParserAction.Stop
+	return s, match.end(), supported_rotations, _action
 
 output_supported_reflection_regex = compile(r'(?P<supported_reflection>x axis|y axis)\s*(?:\s|(?P<end>\)\s*))')
 def output_supported_reflection_func(s, pos, supported_reflections, match):
 	supported_reflections.append(
 		text_to_supported_reflection[match.group('supported_reflection')]
 	)
+	_action = ParserAction.Again
 	if match.group('end'):
-		return s, match.end(), supported_reflections, ParserAction.Stop
-	return s, match.end()
+		_action = ParserAction.Stop
+	return s, match.end(), supported_reflections, _action
 
 output_regex2 = compile(
 	r'''
@@ -795,21 +797,21 @@ def output_property_other_func(s, pos, output_properties, match):
 		)
 	
 	output_properties.other[output_property.name] = output_property
-	return s, pos, output_properties, ParserAction.Continue
+	return s, pos
 
 output_property_other_range_regex = compile(r' \((?P<start_val>[^,]+), (?P<end_val>[^)]+)\)(?:,|(?P<end>$\s*))', MULTILINE)
 def output_property_other_range_func(s, pos, output_property, match):
 	if output_property.range is None:
 		output_property.range = []
 	output_property.range.append((match.group('start_val'), match.group('end_val')))
-	return s, match.end(), output_property, ParserAction.Stop if match.group('end') else ParserAction.Continue
+	return s, match.end(), output_property, ParserAction.Stop if match.group('end') else ParserAction.Again
 
 output_property_other_supported_regex = compile(r' (?P<value>[^\n,]+)(?:,|(?P<end>$\s*))', MULTILINE)
 def output_property_other_supported_func(s, pos, output_property, match):
 	if output_property.supported is None:
 		output_property.supported = []
 	output_property.supported.append(match.group('value'))
-	return s, match.end(), output_property, ParserAction.Stop if match.group('end') else ParserAction.Continue
+	return s, match.end(), output_property, ParserAction.Stop if match.group('end') else ParserAction.Again
 
 output_property_parser_list = (
 	(output_property_identifier_regex, output_property_identifier_func),
@@ -866,7 +868,7 @@ def output_mode_nonverbose_func(s, pos, modes, match):
 		modes.append(mode)
 		pos = match.end()
 	
-	return s, pos
+	return s, pos, modes, ParserAction.Again
 
 output_mode_verbose_regex = compile(
 	r'''
@@ -924,7 +926,7 @@ def output_mode_verbose_func(s, pos, modes, match):
 		mode.flags |= text_to_flag[flag]
 	
 	modes.append(mode)
-	return s, match.end()
+	return s, match.end(), modes, ParserAction.Again
 
 # Parser
 
@@ -935,8 +937,9 @@ class ParserAction(Enum):
 	Stop = auto()
 	Again = auto()
 
-def parse(s, pos, obj, regexes, default_action=ParserAction.Restart):
-	matched = False
+def parse(s, pos, obj, regexes, default_action=ParserAction.Restart, again_nomatch_action=ParserAction.Continue):
+	assert again_nomatch_action != ParserAction.Again
+	
 	matches = 0
 	
 	action = ParserAction.Restart
@@ -944,6 +947,7 @@ def parse(s, pos, obj, regexes, default_action=ParserAction.Restart):
 		if action == ParserAction.Stop:
 			break
 		if action == ParserAction.Restart:
+			matched = False
 			regex_iter = iter(regexes)
 			action = ParserAction.Continue
 		if action == ParserAction.Continue:
@@ -952,7 +956,6 @@ def parse(s, pos, obj, regexes, default_action=ParserAction.Restart):
 			except StopIteration:
 				if not matched:
 					break
-				matched = False
 				action = ParserAction.Restart
 				continue
 		else:
@@ -960,6 +963,8 @@ def parse(s, pos, obj, regexes, default_action=ParserAction.Restart):
 		
 		match = regex.match(s, pos=pos)
 		if not match:
+			if action == ParserAction.Again:
+				action = again_nomatch_action
 			continue
 		matched = True
 		matches += 1
