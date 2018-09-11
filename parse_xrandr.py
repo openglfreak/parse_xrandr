@@ -578,12 +578,12 @@ def output_func2(s, pos, output, match):
 output_property_identifier_regex = compile(r'(?<=^\t)Identifier:\s*(?P<identifier>0x[0-9A-Fa-f]+)\s*', MULTILINE)
 def output_property_identifier_func(s, pos, output_properties, match):
 	output_properties.identifier = int(match.group('identifier'), 16)
-	return s, match.end(), output_properties, ParserAction.Continue
+	return s, match.end()
 
 output_property_timestamp_regex = compile(r'(?<=^\t)Timestamp:\s*(?P<timestamp>\d+)\s*', MULTILINE)
 def output_property_timestamp_func(s, pos, output_properties, match):
 	output_properties.timestamp = int(match.group('timestamp'))
-	return s, match.end(), output_properties, ParserAction.Continue
+	return s, match.end()
 
 output_property_subpixel_order_regex = compile(
 	r'''
@@ -598,14 +598,14 @@ output_property_subpixel_order_regex = compile(
 )
 def output_property_subpixel_order_func(s, pos, output_properties, match):
 	output_properties.subpixel_order = text_to_subpixel_order[match.group('subpixel_order')]
-	return s, match.end(), output_properties, ParserAction.Continue
+	return s, match.end()
 
 output_property_gamma_regex = compile(
 	r'''
 	(?<=^\t)Gamma:\s*
-	(?P<gamma_red>\d+(?:\.\d+)(?:e+\d+))
-	:(?P<gamma_green>\d+(?:\.\d+)(?:e+\d+))
-	:(?P<gamma_blue>\d+(?:\.\d+)(?:e+\d+))
+	(?P<gamma_red>\d*\.\d*(?:e\d+)?)
+	:(?P<gamma_green>\d*\.\d*(?:e\d+)?)
+	:(?P<gamma_blue>\d*\.\d*(?:e\d+)?)
 	\s*
 	''',
 	VERBOSE | MULTILINE
@@ -616,34 +616,34 @@ def output_property_gamma_func(s, pos, output_properties, match):
 		float(match.group('gamma_green')),
 		float(match.group('gamma_blue'))
 	)
-	return s, match.end(), output_properties, ParserAction.Continue
+	return s, match.end()
 
 output_property_brightness_regex = compile(
 	r'''
 	(?<=^\t)Brightness:\s*
-	(?P<brightness>\d+(?:\.\d+)(?:e+\d+))
+	(?P<brightness>\d*\.\d*(?:e\d+)?)
 	\s*
 	''',
 	VERBOSE | MULTILINE
 )
 def output_property_brightness_func(s, pos, output_properties, match):
 	output_properties.brightness = float(match.group('brightness'))
-	return s, match.end(), output_properties, ParserAction.Continue
+	return s, match.end()
 
 output_property_clones_regex = compile(r'(?<=^\t)Clones:[^\S\n]*(?P<clones>(?:\S+[^\S\n]*)*)\s*', MULTILINE)
 def output_property_clones_func(s, pos, output_properties, match):
 	output_properties.clones = match.group('clones').split()
-	return s, match.end(), output_properties, ParserAction.Continue
+	return s, match.end()
 
 output_property_crtc_regex = compile(r'(?<=^\t)CRTC:\s*(?P<crtc>\d+)\s*', MULTILINE)
 def output_property_crtc_func(s, pos, output_properties, match):
 	output_properties.crtc = int(match.group('crtc'))
-	return s, match.end(), output_properties, ParserAction.Continue
+	return s, match.end()
 
 output_property_crtcs_regex = compile(r'(?<=^\t)CRTCs:\s*(?P<crtcs>(?:\d+(?:$|\s+))+)\s*', MULTILINE)
 def output_property_crtcs_func(s, pos, output_properties, match):
 	output_properties.crtcs = tuple(int(crtc) for crtc in match.group('crtcs').split())
-	return s, match.end(), output_properties, ParserAction.Continue
+	return s, match.end()
 
 output_property_panning_regex = compile(
 	r'''
@@ -665,7 +665,7 @@ def output_property_panning_func(s, pos, output_properties, match):
 			int(match.group('pan_top'))
 		)
 	)
-	return s, match.end(), output_properties, ParserAction.Continue
+	return s, match.end()
 
 output_property_tracking_regex = compile(
 	r'''
@@ -687,13 +687,16 @@ def output_property_tracking_func(s, pos, output_properties, match):
 			int(match.group('track_top'))
 		)
 	)
-	return s, match.end(), output_properties, ParserAction.Continue
+	return s, match.end()
 
 output_property_border_regex = compile(
 	r'''
 	(?<=^\t)Border:\s*
-	(?P<border_left>\d+)/(?P<border_top>\d+)
-	/(?P<border_right>\d+)/(?P<border_bottom>\d+)
+	(?P<border_left>\d+)\s+
+	(?P<border_top>\d+)\s+
+	(?P<border_right>\d+)\s+
+	(?P<border_bottom>\d+)\s+
+	range:.*
 	\s*
 	''',
 	VERBOSE | MULTILINE
@@ -705,7 +708,7 @@ def output_property_border_func(s, pos, output_properties, match):
 		int(match.group('border_right')),
 		int(match.group('border_bottom'))
 	)
-	return s, match.end(), output_properties, ParserAction.Continue
+	return s, match.end()
 
 output_property_transform_regex = compile(
 	r'''
@@ -727,7 +730,7 @@ def output_property_transform_func(s, pos, output_properties, match):
 		*tuple(float(v) for v in match.group('matrix').split()),
 		match.group('filter') or None
 	)
-	return s, match.end(), output_properties, ParserAction.Continue
+	return s, match.end()
 
 output_property_edid_regex = compile(
 	r'''
@@ -741,7 +744,7 @@ output_property_edid_regex = compile(
 )
 def output_property_edid_func(s, pos, output_properties, match):
 	output_properties.edid = bytes.fromhex(match.group('edid'))
-	return s, match.end(), output_properties, ParserAction.Continue
+	return s, match.end()
 
 output_property_guid_regex = compile(
 	r'''
@@ -764,7 +767,7 @@ output_property_guid_regex = compile(
 )
 def output_property_guid_func(s, pos, output_properties, match):
 	output_properties.edid = bytes.fromhex(match.group('guid')[1:-1].replace('-', ''))
-	return s, match.end(), output_properties, ParserAction.Continue
+	return s, match.end()
 
 output_property_other_regex = compile(
 	r'''
