@@ -903,7 +903,7 @@ def output_mode_verbose_func(s, pos, modes, match):
 	mode = XRandROutput.Mode(
 		name=match.group('name'),
 		id=int(match.group('id'), 16),
-		dotclock=float(match.group('dotclock')),
+		dotclock=float(match.group('dotclock')) * 1000000,
 		current=bool(match.group('current')),
 		preferred=bool(match.group('preferred')),
 		
@@ -912,9 +912,9 @@ def output_mode_verbose_func(s, pos, modes, match):
 		h_sync_end=int(match.group('h_sync_end')),
 		h_total=int(match.group('h_total')),
 		h_skew=int(match.group('h_skew')),
-		h_clock=float(match.group('h_clock')) * 1000000,
+		h_clock=float(match.group('h_clock')) * 1000,
 		
-		height=int(match.group('width')),
+		height=int(match.group('height')),
 		v_sync_start=int(match.group('v_sync_start')),
 		v_sync_end=int(match.group('v_sync_end')),
 		v_total=int(match.group('v_total')),
