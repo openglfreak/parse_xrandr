@@ -2,14 +2,16 @@ from .classes import *
 
 __all__ = (
 	'text_to_rotation',
+	'rotation_to_text',
 	'text_to_reflection',
+	'reflection_to_text',
 	'text_to_supported_reflection',
 	'text_to_subpixel_order',
 	'text_to_flag'
 )
 
-#def reverse_mapping(mapping):
-#	return { v: k for k, v in mapping.items() }
+def reverse_mapping(mapping):
+	return { v: k for k, v in mapping.items() }
 
 text_to_rotation = {
 	'normal': XRandROutput.Rotation.Rotate_0,
@@ -18,7 +20,7 @@ text_to_rotation = {
 	'right': XRandROutput.Rotation.Rotate_270,
 	'invalid rotation': None
 }
-#rotation_to_text = reverse_mapping(text_to_rotation)
+rotation_to_text = reverse_mapping(text_to_rotation)
 
 text_to_reflection = {
 	'none': XRandROutput.Reflection(0),
@@ -27,13 +29,17 @@ text_to_reflection = {
 	'X and Y axis': XRandROutput.Reflection.Reflect_X | XRandROutput.Reflection.Reflect_Y,
 	'invalid reflection': None
 }
-#reflection_to_text = reverse_mapping(text_to_reflection)
+reflection_to_text = {
+	XRandROutput.Reflection(0): 'normal',
+	XRandROutput.Reflection.Reflect_X: 'x',
+	XRandROutput.Reflection.Reflect_Y: 'y',
+	XRandROutput.Reflection.Reflect_X | XRandROutput.Reflection.Reflect_Y: 'xy'
+}
 
 text_to_supported_reflection = {
 	'x axis': XRandROutput.Reflection.Reflect_X,
 	'y axis': XRandROutput.Reflection.Reflect_Y
 }
-#supported_reflection_to_text = reverse_mapping(text_to_supported_reflection)
 
 text_to_subpixel_order = {
 	'horizontal rgb': XRandROutputProperties.SubpixelOrder.HorizontalRGB,
