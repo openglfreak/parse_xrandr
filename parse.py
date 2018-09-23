@@ -2,7 +2,7 @@ from shutil import which
 from subprocess import Popen, PIPE
 
 from .parser import *
-from .xrandr_parsing import *
+from .parsing import *
 
 __all__ = (
 	'parse_xrandr_screens',
