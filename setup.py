@@ -44,31 +44,37 @@ class XRandRSetupOptions(Flag):
 	
 	SetupAll = ~SetupNone
 
-def setup_screens(screens, setup_options=XRandRSetupOptions.SetupAll):
+def setup_screens(screens, setup_options=~XRandRSetupOptions.SetupUnknownOutputProperties):
 	if not setup_options & XRandRSetupOptions.SetupAll:
 		return
+	
+	if hasattr(screens, 'values') and callable(screens.values):
+		screens = screens.values()
 	
 	args = _setup_screens_args(screens, setup_options)
 	if args:
 		os.spawnlp(os.P_WAIT, 'xrandr', 'xrandr', *args)
 	
 	if setup_options & XRandRSetupOptions.SetupUnknownOutputProperties:
-		for screen in screens.values():
+		for screen in screens:
 			if screen.outputs:
 				for output in screen.outputs.values():
-					_setup_output_unknown_properties(screen.number, output.name, output.properties.other, setup_options)
+					_setup_output_unknown_properties(screen.number, output.name, output.properties.other.values(), setup_options)
 
-def setup_outputs(screen_nr, outputs, setup_options=XRandRSetupOptions.SetupAll):
+def setup_outputs(screen_nr, outputs, setup_options=~XRandRSetupOptions.SetupUnknownOutputProperties):
 	if not setup_options & XRandRSetupOptions.SetupOutputAll:
 		return
+	
+	if hasattr(outputs, 'values') and callable(outputs.values):
+		outputs = outputs.values()
 	
 	args = _setup_outputs_args(outputs, setup_options)
 	if args:
 		os.spawnlp(os.P_WAIT, 'xrandr', 'xrandr', '--screen', str(screen_nr), *args)
 	
 	if setup_options & XRandRSetupOptions.SetupUnknownOutputProperties:
-		for output in outputs.values():
-			_setup_output_unknown_properties(screen_nr, output.name, output.properties.other, setup_options)
+		for output in outputs:
+			_setup_output_unknown_properties(screen_nr, output.name, output.properties.other.values(), setup_options)
 
 def _setup_screens_args(screens, setup_options):
 	if not setup_options & XRandRSetupOptions.SetupScreens:
@@ -76,7 +82,7 @@ def _setup_screens_args(screens, setup_options):
 	
 	args = []
 	
-	for screen in screens.values():
+	for screen in screens:
 		_args = []
 		
 		if (setup_options & XRandRSetupOptions.SetupScreenDimensions
@@ -100,7 +106,7 @@ def _setup_screens_args(screens, setup_options):
 			if not has_primary:
 				_args.append('--noprimary')
 		
-		_args.extend(_setup_outputs_args(screen.outputs, setup_options) or ())
+		_args.extend(_setup_outputs_args(screen.outputs.values(), setup_options) or ())
 		if _args:
 			args.extend(('--screen', str(screen.number)))
 			args.extend(_args)
@@ -113,7 +119,7 @@ def _setup_outputs_args(outputs, setup_options):
 	
 	args = []
 	
-	for output in outputs.values():
+	for output in outputs:
 		if not output:
 			continue
 		
@@ -346,7 +352,7 @@ def _setup_output_unknown_properties(screen_nr, output_name, properties, setup_o
 	if not setup_options & XRandRSetupOptions.SetupUnknownOutputProperties:
 		return
 	
-	for property in properties.values():
+	for property in properties:
 		if property.name:
 			os.spawnlp(
 				os.P_WAIT,
