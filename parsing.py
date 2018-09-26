@@ -566,23 +566,6 @@ def output_mode_verbose_flag_func(s, pos, flags, match):
 		_action = ParserAction.Stop
 	return s, match.end(), flags, _action
 
-'''
-from parse_xrandr.parsing import *
-from parse_xrandr.parser import parse
-from shutil import which
-from subprocess import Popen, PIPE
-from parse_xrandr.parsing import output_mode_verbose_regex2, output_mode_verbose_func2
-
-with Popen(('xrandr', '--verbose'), executable=which('xrandr'), stdout=PIPE, universal_newlines=True) as popen:
-	xrandr_output = popen.stdout.read()
-
-s, pos, screens, matches = parse(
-	xrandr_output,
-	0,
-	{},
-	((screen_regex, screen_func),)
-)
-'''
 output_mode_verbose_regex2 = compile(
 	r'''
 	(?P<current>\*current\s+)?
