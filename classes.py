@@ -136,7 +136,7 @@ class XRandROutput:
 				return 0
 			return self.dotclock / self.h_total
 		@h_clock.setter
-		def h_clock_setter(self, val):
+		def h_clock(self, val):
 			self._h_clock = val
 		@property
 		def refresh(self):
@@ -156,7 +156,7 @@ class XRandROutput:
 				return 0
 			return self.dotclock / (self.h_total * v_total)
 		@refresh.setter
-		def refresh_setter(self, val):
+		def refresh(self, val):
 			self._refresh = val
 		def __init__(
 			self,
