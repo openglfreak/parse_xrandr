@@ -530,21 +530,73 @@ output_mode_verbose_regex = compile(
 	(?<=^\ {2})(?P<name>\S+)\s+
 	\((?P<id>0x[0-9A-Fa-f]+)\)\s+
 	(?P<dotclock>\d*\.\d*)MHz
-	(?P<flags>(?:\s+''' + r')?(?:\s+'.join(escape(flag) for flag in text_to_flag.keys()) + r''')?)
-	(?P<current>\s+\*current)?
-	(?P<preferred>\s+\+preferred)?
-	[^\S\n]*
+	\s*
+	''',
+	VERBOSE | MULTILINE
+)
+def output_mode_verbose_func(s, pos, modes, match):
+	mode = XRandROutput.Mode(
+		name=match.group('name'),
+		id=int(match.group('id'), 16),
+		dotclock=float(match.group('dotclock')) * 1000000
+	)
 	
-	\n\ {8}h:\s*
+	pos = match.end()
+	s, pos, mode.flags, matches = parse(
+		s,
+		pos,
+		XRandROutput.Mode.Flags(0),
+		((output_mode_verbose_flag_regex, output_mode_verbose_flag_func),)
+	)
+	s, pos, mode, matches = parse(
+		s,
+		pos,
+		mode,
+		((output_mode_verbose_regex2, output_mode_verbose_func2),)
+	)
+	
+	modes.append(mode)
+	return s, pos, modes, ParserAction.Again
+
+output_mode_verbose_flag_regex = compile(r'(?P<flag>' + r'|'.join(escape(flag) for flag in text_to_flag.keys()) + r')\s*(?:\s|(?P<end>$\s*))', MULTILINE)
+def output_mode_verbose_flag_func(s, pos, flags, match):
+	flags |= text_to_flag[match.group('flag')]
+	_action = ParserAction.Again
+	if match.group('end') is not None:
+		_action = ParserAction.Stop
+	return s, match.end(), flags, _action
+
+'''
+from parse_xrandr.parsing import *
+from parse_xrandr.parser import parse
+from shutil import which
+from subprocess import Popen, PIPE
+from parse_xrandr.parsing import output_mode_verbose_regex2, output_mode_verbose_func2
+
+with Popen(('xrandr', '--verbose'), executable=which('xrandr'), stdout=PIPE, universal_newlines=True) as popen:
+	xrandr_output = popen.stdout.read()
+
+s, pos, screens, matches = parse(
+	xrandr_output,
+	0,
+	{},
+	((screen_regex, screen_func),)
+)
+'''
+output_mode_verbose_regex2 = compile(
+	r'''
+	(?P<current>\*current\s+)?
+	(?P<preferred>\+preferred\s+)?
+	
+	(?<=^\ {8})h:\s*
 	width\s+(?P<width>\d+)\s+
 	start\s+(?P<h_sync_start>\d+)\s+
 	end\s+(?P<h_sync_end>\d+)\s+
 	total\s+(?P<h_total>\d+)\s+
 	skew\s+(?P<h_skew>\d+)\s+
-	clock\s+(?P<h_clock>\d*\.\d*)KHz
-	[^\S\n]*
+	clock\s+(?P<h_clock>\d*\.\d*)KHz\s+
 	
-	\n\ {8}v:\s*
+	(?<=^\ {8})v:\s*
 	height\s+(?P<height>\d+)\s+
 	start\s+(?P<v_sync_start>\d+)\s+
 	end\s+(?P<v_sync_end>\d+)\s+
@@ -554,33 +606,23 @@ output_mode_verbose_regex = compile(
 	''',
 	VERBOSE | MULTILINE
 )
-def output_mode_verbose_func(s, pos, modes, match):
-	mode = XRandROutput.Mode(
-		name=match.group('name'),
-		id=int(match.group('id'), 16),
-		dotclock=float(match.group('dotclock')) * 1000000,
-		current=bool(match.group('current')),
-		preferred=bool(match.group('preferred')),
-		
-		width=int(match.group('width')),
-		h_sync_start=int(match.group('h_sync_start')),
-		h_sync_end=int(match.group('h_sync_end')),
-		h_total=int(match.group('h_total')),
-		h_skew=int(match.group('h_skew')),
-		h_clock=float(match.group('h_clock')) * 1000,
-		
-		height=int(match.group('height')),
-		v_sync_start=int(match.group('v_sync_start')),
-		v_sync_end=int(match.group('v_sync_end')),
-		v_total=int(match.group('v_total')),
-		refresh=float(match.group('refresh'))
-	)
+def output_mode_verbose_func2(s, pos, mode, match):
+	mode.current = bool(match.group('current'))
+	mode.preferred = bool(match.group('preferred'))
 	
-	mode.flags = XRandROutput.Mode.Flags(0)
-	for flag in match.group('flags').split():
-		mode.flags |= text_to_flag[flag]
+	mode.width = int(match.group('width'))
+	mode.h_sync_start = int(match.group('h_sync_start'))
+	mode.h_sync_end = int(match.group('h_sync_end'))
+	mode.h_total = int(match.group('h_total'))
+	mode.h_skew = int(match.group('h_skew'))
+	mode.h_clock = float(match.group('h_clock')) * 1000
 	
-	modes.append(mode)
-	return s, match.end(), modes, ParserAction.Again
+	mode.height = int(match.group('height'))
+	mode.v_sync_start = int(match.group('v_sync_start'))
+	mode.v_sync_end = int(match.group('v_sync_end'))
+	mode.v_total = int(match.group('v_total'))
+	mode.refresh = float(match.group('refresh'))
+	
+	return s, match.end(), mode, ParserAction.Stop
 
 __all__ = [v for v in globals() if v.endswith(('_func', '_regex'))]
