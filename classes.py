@@ -130,7 +130,7 @@ class XRandROutput:
 		def h_clock(self):
 			if self._h_clock is not None:
 				return self._h_clock
-			if self.dotclock is None or self.hTotal is None:
+			if self.dotclock is None or self.h_total is None:
 				return None
 			if self.h_total == 0:
 				return 0
