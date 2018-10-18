@@ -257,7 +257,7 @@ def _setup_outputs_args(outputs, setup_options):
 def _merge_geometry_objects(a, b):
 	if a is None:
 		return b
-	elif b is None:
+	if b is None:
 		return a
 	
 	ret = XRandRGeometry()
@@ -278,7 +278,7 @@ def _merge_geometry_objects(a, b):
 def _merge_border_objects(a, b):
 	if a is None:
 		return b
-	elif b is None:
+	if b is None:
 		return a
 	
 	return XRandRBorder(
@@ -368,6 +368,6 @@ def _setup_output_unknown_properties(screen_nr, output_name, properties, setup_o
 			)
 
 def _propval_to_str(v):
-	if isinstance(v, list) or isinstance(v, tuple) or isinstance(v, bytes):
+	if isinstance(v, (list, tuple, bytes)):
 		return ','.join(str(x) for x in v)
 	return str(v)
