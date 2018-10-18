@@ -1,9 +1,9 @@
 from . import classes
-from . import parse
+from . import parsing_entry
 from . import setup
 
-__all__ = classes.__all__ + parse.__all__ + setup.__all__
+__all__ = classes.__all__ + parsing_entry.__all__ + setup.__all__
 
 from .classes import *
-from .parse import *
+from .parsing_entry import *
 from .setup import *
