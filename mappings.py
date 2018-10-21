@@ -1,4 +1,7 @@
-from .classes import *
+# noqa: W191
+from typing import TypeVar, Mapping, Dict
+
+from .classes import XRandROutput, XRandROutputProperties
 
 __all__ = (
 	'text_to_rotation',
@@ -10,8 +13,15 @@ __all__ = (
 	'text_to_flag'
 )
 
-def reverse_mapping(mapping):
-	return { v: k for k, v in mapping.items() }
+KeyType = TypeVar('KeyType')
+ValueType = TypeVar('ValueType')
+
+
+def reverse_mapping(
+	mapping: Mapping[KeyType, ValueType]
+) -> Dict[ValueType, KeyType]:
+	return {v: k for k, v in mapping.items()}
+
 
 text_to_rotation = {
 	'normal': XRandROutput.Rotation.Rotate_0,
@@ -26,7 +36,8 @@ text_to_reflection = {
 	'none': XRandROutput.Reflection(0),
 	'X axis': XRandROutput.Reflection.Reflect_X,
 	'Y axis': XRandROutput.Reflection.Reflect_Y,
-	'X and Y axis': XRandROutput.Reflection.Reflect_X | XRandROutput.Reflection.Reflect_Y,
+	'X and Y axis':
+		XRandROutput.Reflection.Reflect_X | XRandROutput.Reflection.Reflect_Y,
 	'invalid reflection': None
 }
 reflection_to_text = {
@@ -49,7 +60,6 @@ text_to_subpixel_order = {
 	'no subpixels': XRandROutputProperties.SubpixelOrder.NoSubpixels,
 	'unknown': None
 }
-#subpixel_order_to_text = reverse_mapping(text_to_subpixel_order)
 
 text_to_flag = {
 	'+HSync': XRandROutput.Mode.Flags.HSyncPositive,
@@ -62,4 +72,3 @@ text_to_flag = {
 	'+CSync': XRandROutput.Mode.Flags.CSyncPositive,
 	'-CSync': XRandROutput.Mode.Flags.CSyncNegative
 }
-#flag_to_text = reverse_mapping(text_to_flag)

@@ -1,9 +1,13 @@
+# noqa: W191,W293
 from enum import unique, Enum, auto
+from typing import Any, Iterable, Tuple, Pattern, Callable, Match, Union, \
+	Optional
 
 __all__ = (
 	'ParserAction',
 	'parse'
 )
+
 
 @unique
 class ParserAction(Enum):
@@ -12,13 +16,34 @@ class ParserAction(Enum):
 	Stop = auto()
 	Again = auto()
 
-def parse(s, pos, obj, regexes, default_action=ParserAction.Restart, again_nomatch_action=ParserAction.Continue):
+
+MatchCallbackReturn = Union[
+	Tuple[str],
+	Tuple[str, int],
+	Tuple[str, int, Any],
+	Tuple[str, int, Any, ParserAction]
+]
+MatchCallbackType = Callable[[str, int, Any, Match], MatchCallbackReturn]
+
+
+def parse(
+	s: str,
+	pos: int,
+	obj: Any,
+	regexes: Iterable[Tuple[Pattern, MatchCallbackType]],
+	default_action: ParserAction = ParserAction.Restart,
+	again_nomatch_action: ParserAction = ParserAction.Continue
+) -> Tuple[str, int, Any, int]:
 	assert again_nomatch_action != ParserAction.Again
 	
-	matches = 0
+	matches: int = 0
 	
-	action = ParserAction.Restart
+	action: ParserAction = ParserAction.Restart
 	while True:
+		matched: bool
+		regex: Pattern
+		func: MatchCallbackType
+		
 		if action == ParserAction.Stop:
 			break
 		if action == ParserAction.Restart:
@@ -36,7 +61,7 @@ def parse(s, pos, obj, regexes, default_action=ParserAction.Restart, again_nomat
 		else:
 			assert action == ParserAction.Again
 		
-		match = regex.match(s, pos=pos)
+		match: Optional[Match] = regex.match(s, pos=pos)
 		if not match:
 			if action == ParserAction.Again:
 				action = again_nomatch_action
@@ -46,7 +71,7 @@ def parse(s, pos, obj, regexes, default_action=ParserAction.Restart, again_nomat
 		
 		action = default_action
 		
-		ret = func(s, pos, obj, match)
+		ret: MatchCallbackReturn = func(s, pos, obj, match)
 		if ret is None:
 			continue
 		

@@ -1,14 +1,18 @@
-import os
+# noqa: W191,W293,W503,E128
+from os import spawnlp, P_WAIT
 from enum import Flag, auto
+from typing import Union, Dict, List, Optional, Iterable
 
-from .classes import *
-from .mappings import *
+from .classes import XRandRScreen, XRandRGeometry, XRandRDimensions, \
+	XRandROffset, XRandRBorder, XRandROutput, XRandROutputProperties, Any
+from .mappings import rotation_to_text, reflection_to_text
 
 __all__ = (
 	'XRandRSetupOptions',
 	'setup_screens',
 	'setup_outputs'
 )
+
 
 class XRandRSetupOptions(Flag):
 	SetupNone = 0
@@ -44,46 +48,85 @@ class XRandRSetupOptions(Flag):
 	
 	SetupAll = ~SetupNone
 
-def setup_screens(screens, setup_options=~XRandRSetupOptions.SetupUnknownOutputProperties):
+
+def setup_screens(
+	screens: Union[Iterable[XRandRScreen], Dict[str, XRandRScreen]],
+	setup_options: XRandRSetupOptions =
+	~XRandRSetupOptions.SetupUnknownOutputProperties
+) -> None:
 	if not setup_options & XRandRSetupOptions.SetupAll:
 		return
 	
-	if hasattr(screens, 'values') and callable(screens.values):
-		screens = screens.values()
+	_screens: Iterable[XRandRScreen]
+	if hasattr(screens, 'values') and callable(screens.values):  # type: ignore
+		_screens = screens.values()  # type: ignore
+	else:
+		_screens = screens  # type: ignore
 	
-	args = _setup_screens_args(screens, setup_options)
+	args: Optional[Iterable[Union[str, bytes]]] = _setup_screens_args(
+		_screens,
+		setup_options
+	)
 	if args:
-		os.spawnlp(os.P_WAIT, 'xrandr', 'xrandr', *args)
+		spawnlp(P_WAIT, 'xrandr', 'xrandr', *args)
 	
 	if setup_options & XRandRSetupOptions.SetupUnknownOutputProperties:
-		for screen in screens:
+		for screen in _screens:
 			if screen.outputs:
 				for output in screen.outputs.values():
-					_setup_output_unknown_properties(screen.number, output.name, output.properties.other.values(), setup_options)
+					if output.properties and output.properties.other:
+						_setup_output_unknown_properties(
+							screen.number,
+							output.name,
+							output.properties.other.values(),
+							setup_options
+						)
 
-def setup_outputs(screen_nr, outputs, setup_options=~XRandRSetupOptions.SetupUnknownOutputProperties):
-	if not setup_options & XRandRSetupOptions.SetupOutputAll:
+
+def setup_outputs(
+	screen_nr: int,
+	outputs: Union[Iterable[XRandROutput], Dict[str, XRandROutput]],
+	setup_options: XRandRSetupOptions =
+	~XRandRSetupOptions.SetupUnknownOutputProperties
+) -> None:
+	if not setup_options & XRandRSetupOptions.SetupOutputsAll:
 		return
 	
-	if hasattr(outputs, 'values') and callable(outputs.values):
-		outputs = outputs.values()
+	_outputs: Iterable[XRandROutput]
+	if hasattr(outputs, 'values') and callable(outputs.values):  # type: ignore
+		_outputs = outputs.values()  # type: ignore
+	else:
+		_outputs = outputs  # type: ignore
 	
-	args = _setup_outputs_args(outputs, setup_options)
+	args: Optional[Iterable[Union[str, bytes]]] = _setup_outputs_args(
+		_outputs,
+		setup_options
+	)
 	if args:
-		os.spawnlp(os.P_WAIT, 'xrandr', 'xrandr', '--screen', str(screen_nr), *args)
+		spawnlp(P_WAIT, 'xrandr', 'xrandr', '--screen', str(screen_nr), *args)
 	
 	if setup_options & XRandRSetupOptions.SetupUnknownOutputProperties:
-		for output in outputs:
-			_setup_output_unknown_properties(screen_nr, output.name, output.properties.other.values(), setup_options)
+		for output in _outputs:
+			if output.properties and output.properties.other:
+				_setup_output_unknown_properties(
+					screen_nr,
+					output.name,
+					output.properties.other.values(),
+					setup_options
+				)
 
-def _setup_screens_args(screens, setup_options):
+
+def _setup_screens_args(
+	screens: Iterable[XRandRScreen],
+	setup_options: XRandRSetupOptions
+) -> Optional[List[str]]:
 	if not setup_options & XRandRSetupOptions.SetupScreens:
-		return
+		return None
 	
-	args = []
+	args: List[str] = []
 	
 	for screen in screens:
-		_args = []
+		_args: List[str] = []
 		
 		if (setup_options & XRandRSetupOptions.SetupScreenDimensions
 			and screen.dimensions
@@ -99,38 +142,47 @@ def _setup_screens_args(screens, setup_options):
 			))
 		if (setup_options & XRandRSetupOptions.SetupScreenPrimaryOutput
 			and screen.outputs):
-			has_primary = False
+			has_primary: bool = False
 			for output in screen.outputs.values():
 				if output and output.primary:
 					has_primary = True
 			if not has_primary:
 				_args.append('--noprimary')
 		
-		_args.extend(_setup_outputs_args(screen.outputs.values(), setup_options) or ())
+		if screen.outputs:
+			_args.extend(
+				_setup_outputs_args(screen.outputs.values(), setup_options)
+				or ()
+			)
 		if _args:
 			args.extend(('--screen', str(screen.number)))
 			args.extend(_args)
 	
 	return args
 
-def _setup_outputs_args(outputs, setup_options):
-	if not setup_options & (XRandRSetupOptions.SetupOutputsAll & ~XRandRSetupOptions.SetupUnknownOutputProperties):
-		return
+
+def _setup_outputs_args(
+	outputs: Iterable[XRandROutput],
+	setup_options: XRandRSetupOptions
+) -> Optional[List[str]]:
+	if not (setup_options
+		& XRandRSetupOptions.SetupOutputsAll
+		& ~XRandRSetupOptions.SetupUnknownOutputProperties):
+		return None
 	
-	args = []
+	args: List[str] = []
 	
 	for output in outputs:
-		if not output:
-			continue
+		_args: List[str] = []
 		
-		_args = []
-		
-		if setup_options & XRandRSetupOptions.SetupScreenPrimaryOutput and output.primary:
+		if (setup_options & XRandRSetupOptions.SetupScreenPrimaryOutput
+			and output.primary):
 			_args.append('--primary')
 		
-		if setup_options & XRandRSetupOptions.SetupOutputMode:
-			mode = None
-			rate = None
+		if (setup_options & XRandRSetupOptions.SetupOutputMode
+			and output.modes):
+			mode: Optional[str] = None
+			rate: Optional[float] = None
 			
 			for _mode in output.modes:
 				if _mode.current:
@@ -162,8 +214,8 @@ def _setup_outputs_args(outputs, setup_options):
 				_args.extend(('--rate', str(rate)))
 			if mode:
 				_args.extend(('--mode', mode))
-			#else:
-			#	_args.append('--off')
+			elif output.mode is False:
+				_args.append('--off')
 			
 			if (output.geometry
 				and output.geometry.offset
@@ -191,15 +243,19 @@ def _setup_outputs_args(outputs, setup_options):
 			))
 		
 		if setup_options & XRandRSetupOptions.SetupOutputPanning:
-			_panning = _merge_geometry_objects(
-				output.panning,
-				output.properties.panning
-			)
+			_panning: Optional[XRandRGeometry]
+			if output.properties:
+				_panning = _merge_geometry_objects(
+					output.panning,
+					output.properties.panning
+				)
+			else:
+				_panning = output.panning
 			if (_panning
 				and _panning.dimensions
 				and _panning.dimensions.width is not None
 				and _panning.dimensions.height is not None):
-				_panning_arg = '{!s}x{!s}'.format(
+				_panning_arg: str = '{!s}x{!s}'.format(
 					_panning.dimensions.width,
 					_panning.dimensions.height
 				)
@@ -211,10 +267,14 @@ def _setup_outputs_args(outputs, setup_options):
 						_panning.offset.y
 					)
 				if setup_options & XRandRSetupOptions.SetupOutputTracking:
-					_tracking = _merge_geometry_objects(
-						output.tracking,
-						output.properties.tracking
-					)
+					_tracking: Optional[XRandRGeometry]
+					if output.properties:
+						_tracking = _merge_geometry_objects(
+							output.tracking,
+							output.properties.tracking
+						)
+					else:
+						_tracking = output.tracking
 					if (_tracking
 						and _tracking.dimensions
 						and _tracking.dimensions.width is not None
@@ -228,11 +288,16 @@ def _setup_outputs_args(outputs, setup_options):
 							_tracking.offset.x,
 							_tracking.offset.y
 						)
-						if setup_options & XRandRSetupOptions.SetupOutputBorder:
-							_border = _merge_border_objects(
-								output.border,
-								output.properties.border
-							)
+						if (setup_options
+							& XRandRSetupOptions.SetupOutputBorder):
+							_border: Optional[XRandRBorder]
+							if output.properties:
+								_border = _merge_border_objects(
+									output.border,
+									output.properties.border
+								)
+							else:
+								_border = output.border
 							if (_border
 								and _border.left is not None
 								and _border.top is not None
@@ -246,36 +311,58 @@ def _setup_outputs_args(outputs, setup_options):
 								)
 				_args.extend(('--panning', _panning_arg))
 		
-		if setup_options & XRandRSetupOptions.SetupOutputProperties:
-			_args.extend(_setup_output_properties_args(output.properties, setup_options) or ())
+		if (setup_options & XRandRSetupOptions.SetupOutputProperties
+			and output.properties):
+			_args.extend(
+				_setup_output_properties_args(output.properties, setup_options)
+				or ()
+			)
 		if _args:
 			args.extend(('--output', output.name))
 			args.extend(_args)
 	
 	return args
 
-def _merge_geometry_objects(a, b):
+
+def _merge_geometry_objects(
+	a: Optional[XRandRGeometry],
+	b: Optional[XRandRGeometry]
+) -> Optional[XRandRGeometry]:
 	if a is None:
 		return b
 	if b is None:
 		return a
 	
-	ret = XRandRGeometry()
+	ret: XRandRGeometry = XRandRGeometry()
 	
 	if a.dimensions or b.dimensions:
-		ret.dimensions = XRandRDimensions(
-			a.dimensions.width if a.dimensions.width is not None else b.dimensions.width,
-			a.dimensions.height if a.dimensions.height is not None else b.dimensions.height
-		)
+		ret.dimensions = XRandRDimensions(None, None)
+		if a.dimensions and a.dimensions.width is not None:
+			ret.dimensions.width = a.dimensions.width
+		elif b.dimensions:
+			ret.dimensions.width = b.dimensions.width
+		if a.dimensions and a.dimensions.height is not None:
+			ret.dimensions.height = a.dimensions.height
+		elif b.dimensions:
+			ret.dimensions.height = b.dimensions.height
 	if a.offset or b.offset:
-		ret.offset = XRandROffset(
-			a.offset.x if a.offset.x is not None else b.offset.x,
-			a.offset.y if a.offset.y is not None else b.offset.y
-		)
+		ret.offset = XRandROffset(None, None)
+		if a.offset and a.offset.x is not None:
+			ret.offset.x = a.offset.x
+		elif b.offset:
+			ret.offset.x = b.offset.x
+		if a.offset and a.offset.y is not None:
+			ret.offset.y = a.offset.y
+		elif b.offset:
+			ret.offset.y = b.offset.y
 	
 	return ret
 
-def _merge_border_objects(a, b):
+
+def _merge_border_objects(
+	a: Optional[XRandRBorder],
+	b: Optional[XRandRBorder]
+) -> Optional[XRandRBorder]:
 	if a is None:
 		return b
 	if b is None:
@@ -288,11 +375,15 @@ def _merge_border_objects(a, b):
 		a.bottom if a.bottom is not None else b.bottom
 	)
 
-def _setup_output_properties_args(properties, setup_options):
+
+def _setup_output_properties_args(
+	properties: XRandROutputProperties,
+	setup_options: XRandRSetupOptions
+) -> Optional[List[str]]:
 	if not setup_options & ~XRandRSetupOptions.SetupOutputProperties:
-		return
+		return None
 	
-	args = []
+	args: List[str] = []
 	
 	if (properties.gamma
 		and properties.gamma.red is not None
@@ -348,14 +439,20 @@ def _setup_output_properties_args(properties, setup_options):
 	
 	return args
 
-def _setup_output_unknown_properties(screen_nr, output_name, properties, setup_options):
+
+def _setup_output_unknown_properties(
+	screen_nr: int,
+	output_name: str,
+	properties: Iterable[XRandROutputProperties.OtherProperty],
+	setup_options: XRandRSetupOptions
+) -> None:
 	if not setup_options & XRandRSetupOptions.SetupUnknownOutputProperties:
 		return
 	
 	for property in properties:
 		if property.name:
-			os.spawnlp(
-				os.P_WAIT,
+			spawnlp(
+				P_WAIT,
 				'xrandr',
 				'xrandr',
 				'--screen',
@@ -367,7 +464,8 @@ def _setup_output_unknown_properties(screen_nr, output_name, properties, setup_o
 				_propval_to_str(property.value) if property.value is not None else ''
 			)
 
-def _propval_to_str(v):
+
+def _propval_to_str(v: Any) -> str:
 	if isinstance(v, (list, tuple, bytes)):
 		return ','.join(str(x) for x in v)
 	return str(v)
