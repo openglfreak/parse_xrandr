@@ -24,7 +24,7 @@ def parse_xrandr() -> Tuple[Dict[str, XRandRScreen], bool]:
 		stdout=PIPE,
 		universal_newlines=True
 	) as popen:
-		xrandr_output = popen.stdout.read()
+		xrandr_output: str = popen.stdout.read()
 	
 	return parse_screens(xrandr_output)
 
@@ -36,8 +36,8 @@ def parse_screens(
 	xrandr_output, start, screens, matches = parse(
 		xrandr_output,
 		start,
-		{},
-		((screen_regex, screen_func),)
+		((screen_regex, screen_func),),
+		{}
 	)
 	success = start == len(xrandr_output)
 	return screens, success
