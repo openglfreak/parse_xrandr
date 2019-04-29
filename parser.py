@@ -1,4 +1,3 @@
-# noqa: W191
 import dataclasses
 import enum
 from typing import Any, Callable, Iterable, Iterator, Match, Optional, \

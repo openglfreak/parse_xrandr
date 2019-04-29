@@ -1,4 +1,3 @@
-# noqa: W191
 from typing import Dict, Mapping, Optional, TypeVar
 
 from .classes import XRandROutput, XRandROutputProperties
@@ -47,14 +46,15 @@ text_to_supported_reflection: Dict[str, XRandROutput.Reflection] = {
     'y axis': XRandROutput.Reflection.Reflect_Y
 }
 
-text_to_subpixel_order: Dict[
-    str, Optional[XRandROutputProperties.SubpixelOrder]] = {
-        'horizontal rgb': XRandROutputProperties.SubpixelOrder.HorizontalRGB,
-        'horizontal bgr': XRandROutputProperties.SubpixelOrder.HorizontalBGR,
-        'vertical rgb': XRandROutputProperties.SubpixelOrder.VerticalRGB,
-        'vertical bgr': XRandROutputProperties.SubpixelOrder.VerticalBGR,
-        'no subpixels': XRandROutputProperties.SubpixelOrder.NoSubpixels,
-        'unknown': None
+text_to_subpixel_order: \
+    Dict[str, Optional[XRandROutputProperties.SubpixelOrder]]
+text_to_subpixel_order = {
+    'horizontal rgb': XRandROutputProperties.SubpixelOrder.HorizontalRGB,
+    'horizontal bgr': XRandROutputProperties.SubpixelOrder.HorizontalBGR,
+    'vertical rgb': XRandROutputProperties.SubpixelOrder.VerticalRGB,
+    'vertical bgr': XRandROutputProperties.SubpixelOrder.VerticalBGR,
+    'no subpixels': XRandROutputProperties.SubpixelOrder.NoSubpixels,
+    'unknown': None
 }
 
 text_to_flag: Dict[str, XRandROutput.Mode.Flags] = {

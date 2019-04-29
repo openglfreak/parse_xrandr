@@ -1,5 +1,3 @@
-# noqa: E302
-# xnoqa: W191,W293,E128,W503,E302,E501
 import re
 from typing import Iterable, Match, Optional, Pattern, Tuple
 
