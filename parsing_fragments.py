@@ -593,7 +593,7 @@ output_property_other_range_regex = re.compile(
     r'''
     \ \((?P<start_val>[^,]+),
     \ (?P<end_val>[^)]+)\)
-    \ (?:,|(?P<end>$\s*))
+    (?:,|(?P<end>$\s*))
     ''',
     re.VERBOSE | re.MULTILINE
 )

@@ -1,4 +1,3 @@
-# noqa: W191,W293,W503,E128
 import os
 import enum
 from typing import Dict, Iterable, List, Optional, Union
@@ -8,96 +7,100 @@ from .classes import Any, XRandRBorder, XRandRDimensions, XRandRGeometry, \
                      XRandRScreen
 from .mappings import reflection_to_text, rotation_to_text
 
-__all__ = ('XRandRSetupOptions', 'setup_screens', 'setup_outputs')
+__all__ = ('XRandRConfigurationOptions', 'configure_screens',
+           'configure_outputs')
 
 
-class XRandRSetupOptions(enum.Flag):
-    SetupNone = 0
+class XRandRConfigurationOptions(enum.Flag):
+    ConfigureNone = 0
 
-    SetupScreenDimensions = enum.auto()
-    SetupScreenPrimaryOutput = enum.auto()
-    SetupScreens = \
-        SetupScreenDimensions |\
-        SetupScreenPrimaryOutput
+    ConfigureScreenDimensions = enum.auto()
+    ConfigureScreenPrimaryOutput = enum.auto()
+    ConfigureScreens = \
+        ConfigureScreenDimensions |\
+        ConfigureScreenPrimaryOutput
 
-    SetupOutputPosition = enum.auto()
-    SetupOutputMode = enum.auto()
-    SetupOutputRotation = enum.auto()
-    SetupOutputReflection = enum.auto()
-    SetupOutputPanning = enum.auto()
-    SetupOutputTracking = enum.auto()
-    SetupOutputBorder = enum.auto()
-    SetupOutputsBasic = \
-        SetupOutputPosition |\
-        SetupOutputMode |\
-        SetupOutputRotation |\
-        SetupOutputReflection |\
-        SetupOutputPanning |\
-        SetupOutputTracking |\
-        SetupOutputBorder
+    ConfigureOutputPosition = enum.auto()
+    ConfigureOutputMode = enum.auto()
+    ConfigureOutputRotation = enum.auto()
+    ConfigureOutputReflection = enum.auto()
+    ConfigureOutputPanning = enum.auto()
+    ConfigureOutputTracking = enum.auto()
+    ConfigureOutputBorder = enum.auto()
+    ConfigureOutputsBasic = \
+        ConfigureOutputPosition |\
+        ConfigureOutputMode |\
+        ConfigureOutputRotation |\
+        ConfigureOutputReflection |\
+        ConfigureOutputPanning |\
+        ConfigureOutputTracking |\
+        ConfigureOutputBorder
 
-    SetupOutputProperties = enum.auto()
-    SetupUnknownOutputProperties = enum.auto()
-    SetupOutputsAll = \
-        SetupOutputsBasic |\
-        SetupOutputProperties |\
-        SetupUnknownOutputProperties
+    ConfigureOutputProperties = enum.auto()
+    ConfigureUnknownOutputProperties = enum.auto()
+    ConfigureOutputsAll = \
+        ConfigureOutputsBasic |\
+        ConfigureOutputProperties |\
+        ConfigureUnknownOutputProperties
 
-    SetupAll = ~SetupNone
+    ConfigureAll = ~ConfigureNone
 
 
-def setup_screens(
+def configure_screens(
         screens: Union[Iterable[XRandRScreen], Dict[str, XRandRScreen]],
-        setup_options: XRandRSetupOptions =
-        ~XRandRSetupOptions.SetupUnknownOutputProperties
+        config_options: XRandRConfigurationOptions =
+        ~XRandRConfigurationOptions.ConfigureUnknownOutputProperties
 ) -> None:
-    if not setup_options & XRandRSetupOptions.SetupAll:
+    if not config_options & XRandRConfigurationOptions.ConfigureAll:
         return
 
     _screens: Iterable[XRandRScreen]
-    if hasattr(screens, 'values') and callable(screens.values):  # type: ignore
-        _screens = screens.values()  # type: ignore
+    if isinstance(screens, dict):
+        _screens = screens.values()
     else:
-        _screens = screens  # type: ignore
+        _screens = screens
 
-    args: Optional[Iterable[Union[str, bytes]]] = _setup_screens_args(
+    args: Optional[Iterable[Union[str, bytes]]] = _configure_screens_args(
         _screens,
-        setup_options
+        config_options
     )
     if args:
         os.spawnlp(os.P_WAIT, 'xrandr', 'xrandr', *args)
 
-    if setup_options & XRandRSetupOptions.SetupUnknownOutputProperties:
-        for screen in _screens:
-            if screen.outputs:
-                for output in screen.outputs.values():
-                    if output.properties and output.properties.other:
-                        _setup_output_unknown_properties(
-                            screen.number,
-                            output.name,
-                            output.properties.other.values(),
-                            setup_options
-                        )
+    if not (config_options
+            & XRandRConfigurationOptions.ConfigureUnknownOutputProperties):
+        return
+
+    for screen in _screens:
+        if screen.outputs:
+            for output in screen.outputs.values():
+                if output.properties and output.properties.other:
+                    _configure_output_unknown_properties(
+                        screen.number,
+                        output.name,
+                        output.properties.other.values(),
+                        config_options
+                    )
 
 
-def setup_outputs(
+def configure_outputs(
         screen_nr: int,
         outputs: Union[Iterable[XRandROutput], Dict[str, XRandROutput]],
-        setup_options: XRandRSetupOptions =
-        ~XRandRSetupOptions.SetupUnknownOutputProperties
+        config_options: XRandRConfigurationOptions =
+        ~XRandRConfigurationOptions.ConfigureUnknownOutputProperties
 ) -> None:
-    if not setup_options & XRandRSetupOptions.SetupOutputsAll:
+    if not config_options & XRandRConfigurationOptions.ConfigureOutputsAll:
         return
 
     _outputs: Iterable[XRandROutput]
-    if hasattr(outputs, 'values') and callable(outputs.values):  # type: ignore
-        _outputs = outputs.values()  # type: ignore
+    if isinstance(outputs, dict):
+        _outputs = outputs.values()
     else:
-        _outputs = outputs  # type: ignore
+        _outputs = outputs
 
-    args: Optional[Iterable[Union[str, bytes]]] = _setup_outputs_args(
+    args: Optional[Iterable[Union[str, bytes]]] = _configure_outputs_args(
         _outputs,
-        setup_options
+        config_options
     )
     if args:
         os.spawnlp(
@@ -106,22 +109,25 @@ def setup_outputs(
             'xrandr', '--screen', str(screen_nr), *args
         )
 
-    if setup_options & XRandRSetupOptions.SetupUnknownOutputProperties:
-        for output in _outputs:
-            if output.properties and output.properties.other:
-                _setup_output_unknown_properties(
-                    screen_nr,
-                    output.name,
-                    output.properties.other.values(),
-                    setup_options
-                )
+    if not (config_options
+            & XRandRConfigurationOptions.ConfigureUnknownOutputProperties):
+        return
+
+    for output in _outputs:
+        if output.properties and output.properties.other:
+            _configure_output_unknown_properties(
+                screen_nr,
+                output.name,
+                output.properties.other.values(),
+                config_options
+            )
 
 
-def _setup_screens_args(
+def _configure_screens_args(
         screens: Iterable[XRandRScreen],
-        setup_options: XRandRSetupOptions
+        config_options: XRandRConfigurationOptions
 ) -> Optional[List[str]]:
-    if not setup_options & XRandRSetupOptions.SetupScreens:
+    if not config_options & XRandRConfigurationOptions.ConfigureScreens:
         return None
 
     args: List[str] = []
@@ -129,7 +135,8 @@ def _setup_screens_args(
     for screen in screens:
         _args: List[str] = []
 
-        if (setup_options & XRandRSetupOptions.SetupScreenDimensions
+        if ((config_options
+             & XRandRConfigurationOptions.ConfigureScreenDimensions)
                 and screen.dimensions
                 and screen.dimensions.current
                 and screen.dimensions.current.width is not None
@@ -141,7 +148,8 @@ def _setup_screens_args(
                     screen.dimensions.current.height
                 )
             ))
-        if (setup_options & XRandRSetupOptions.SetupScreenPrimaryOutput
+        if ((config_options
+             & XRandRConfigurationOptions.ConfigureScreenPrimaryOutput)
                 and screen.outputs):
             has_primary: bool = False
             for output in screen.outputs.values():
@@ -152,8 +160,10 @@ def _setup_screens_args(
 
         if screen.outputs:
             _args.extend(
-                _setup_outputs_args(screen.outputs.values(), setup_options)
-                or ()
+                _configure_outputs_args(
+                    screen.outputs.values(),
+                    config_options
+                ) or ()
             )
         if _args:
             args.extend(('--screen', str(screen.number)))
@@ -162,13 +172,13 @@ def _setup_screens_args(
     return args
 
 
-def _setup_outputs_args(
+def _configure_outputs_args(
         outputs: Iterable[XRandROutput],
-        setup_options: XRandRSetupOptions
+        config_options: XRandRConfigurationOptions
 ) -> Optional[List[str]]:
-    if not (setup_options
-            & XRandRSetupOptions.SetupOutputsAll
-            & ~XRandRSetupOptions.SetupUnknownOutputProperties):
+    if not (config_options
+            & XRandRConfigurationOptions.ConfigureOutputsAll
+            & ~XRandRConfigurationOptions.ConfigureUnknownOutputProperties):
         return None
 
     args: List[str] = []
@@ -176,11 +186,12 @@ def _setup_outputs_args(
     for output in outputs:
         _args: List[str] = []
 
-        if (setup_options & XRandRSetupOptions.SetupScreenPrimaryOutput
+        if ((config_options
+             & XRandRConfigurationOptions.ConfigureScreenPrimaryOutput)
                 and output.primary):
             _args.append('--primary')
 
-        if (setup_options & XRandRSetupOptions.SetupOutputMode
+        if (config_options & XRandRConfigurationOptions.ConfigureOutputMode
                 and output.modes):
             mode: Optional[str] = None
             rate: Optional[float] = None
@@ -230,20 +241,22 @@ def _setup_outputs_args(
                     )
                 ))
 
-        if (setup_options & XRandRSetupOptions.SetupOutputRotation
+        if ((config_options
+             & XRandRConfigurationOptions.ConfigureOutputRotation)
                 and output.rotation is not None):
             _args.extend((
                 '--rotate',
                 rotation_to_text[output.rotation]
             ))
-        if (setup_options & XRandRSetupOptions.SetupOutputReflection
+        if ((config_options
+             & XRandRConfigurationOptions.ConfigureOutputReflection)
                 and output.reflection is not None):
             _args.extend((
                 '--reflect',
                 reflection_to_text[output.reflection]
             ))
 
-        if setup_options & XRandRSetupOptions.SetupOutputPanning:
+        if config_options & XRandRConfigurationOptions.ConfigureOutputPanning:
             _panning: Optional[XRandRGeometry[int]]
             if output.properties:
                 _panning = _merge_geometry_objects(
@@ -267,7 +280,8 @@ def _setup_outputs_args(
                         _panning.offset.x,
                         _panning.offset.y
                     )
-                if setup_options & XRandRSetupOptions.SetupOutputTracking:
+                if (config_options
+                        & XRandRConfigurationOptions.ConfigureOutputTracking):
                     _tracking: Optional[XRandRGeometry[int]]
                     if output.properties:
                         _tracking = _merge_geometry_objects(
@@ -289,8 +303,9 @@ def _setup_outputs_args(
                             _tracking.offset.x,
                             _tracking.offset.y
                         )
-                        if (setup_options
-                                & XRandRSetupOptions.SetupOutputBorder):
+                        if (config_options
+                                & XRandRConfigurationOptions
+                                .ConfigureOutputBorder):
                             _border: Optional[XRandRBorder[int]]
                             if output.properties:
                                 _border = _merge_border_objects(
@@ -312,11 +327,14 @@ def _setup_outputs_args(
                                 )
                 _args.extend(('--panning', _panning_arg))
 
-        if (setup_options & XRandRSetupOptions.SetupOutputProperties
+        if ((config_options
+             & XRandRConfigurationOptions.ConfigureOutputProperties)
                 and output.properties):
             _args.extend(
-                _setup_output_properties_args(output.properties, setup_options)
-                or ()
+                _configure_output_properties_args(
+                    output.properties,
+                    config_options
+                ) or ()
             )
         if _args:
             args.extend(('--output', output.name))
@@ -377,11 +395,12 @@ def _merge_border_objects(
     )
 
 
-def _setup_output_properties_args(
+def _configure_output_properties_args(
         properties: XRandROutputProperties,
-        setup_options: XRandRSetupOptions
+        config_options: XRandRConfigurationOptions
 ) -> Optional[List[str]]:
-    if not setup_options & ~XRandRSetupOptions.SetupOutputProperties:
+    if not (config_options
+            & ~XRandRConfigurationOptions.ConfigureOutputProperties):
         return None
 
     args: List[str] = []
@@ -441,13 +460,14 @@ def _setup_output_properties_args(
     return args
 
 
-def _setup_output_unknown_properties(
+def _configure_output_unknown_properties(
         screen_nr: int,
         output_name: str,
         properties: Iterable[XRandROutputProperties.OtherProperty],
-        setup_options: XRandRSetupOptions
+        config_options: XRandRConfigurationOptions
 ) -> None:
-    if not setup_options & XRandRSetupOptions.SetupUnknownOutputProperties:
+    if not (config_options
+            & XRandRConfigurationOptions.ConfigureUnknownOutputProperties):
         return
 
     for _property in properties:
